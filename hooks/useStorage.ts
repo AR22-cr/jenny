@@ -5,6 +5,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
+import { useSettings } from './useSettings';
 
 const STORAGE_KEY = '@penguinpals:checkins';
 
@@ -31,8 +32,17 @@ async function saveCheckIns(checkIns: StoredCheckIn[]): Promise<void> {
 }
 
 export function useCheckInStorage() {
+    const { settings } = useSettings();
     const [checkIns, setCheckIns] = useState<StoredCheckIn[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const getSimulatedDate = useCallback(() => {
+        const now = new Date();
+        if (settings.debugDateOffset) {
+            now.setDate(now.getDate() + settings.debugDateOffset);
+        }
+        return now;
+    }, [settings.debugDateOffset]);
 
     useEffect(() => {
         loadCheckIns().then((data) => {
@@ -45,7 +55,7 @@ export function useCheckInStorage() {
         answers: Record<string, any>,
         questionsTotal: number,
     ) => {
-        const now = new Date();
+        const now = getSimulatedDate();
         const entry: StoredCheckIn = {
             id: `checkin-${now.getTime()}`,
             date: now.toISOString().split('T')[0],
@@ -71,7 +81,7 @@ export function useCheckInStorage() {
         if (checkIns.length === 0) return 0;
 
         let streak = 0;
-        const today = new Date();
+        const today = getSimulatedDate();
         today.setHours(0, 0, 0, 0);
 
         for (let d = 0; d < 365; d++) {
@@ -106,6 +116,18 @@ export function useCheckInStorage() {
         return Object.entries(weeks).sort(([a], [b]) => b.localeCompare(a));
     }, [checkIns]);
 
+    const clearHistory = useCallback(async () => {
+        setCheckIns([]);
+        await saveCheckIns([]);
+    }, []);
+
+    const reload = useCallback(async () => {
+        setLoading(true);
+        const data = await loadCheckIns();
+        setCheckIns(data);
+        setLoading(false);
+    }, []);
+
     return {
         checkIns,
         loading,
@@ -114,5 +136,8 @@ export function useCheckInStorage() {
         getStreak,
         getRecentCheckIns,
         getCheckInsByWeek,
+        getSimulatedDate,
+        clearHistory,
+        reload,
     };
 }

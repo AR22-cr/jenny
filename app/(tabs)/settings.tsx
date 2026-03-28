@@ -7,6 +7,9 @@
 import Pip from '@/components/Pip';
 import { Colors, Fonts, FontSizes, Radii, Shadows, Spacing } from '@/constants/theme';
 import { useSettings } from '@/hooks/useSettings';
+import { useCheckInStorage } from '@/hooks/useStorage';
+import { useSupabase } from '@/hooks/useSupabase';
+import { supabase } from '@/lib/supabase';
 import { Heart } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -61,6 +64,8 @@ function ToggleRow({
 
 export default function SettingsScreen() {
     const { settings, updateSetting } = useSettings();
+    const { simulateHistory, syncing, pairWithDoctor, patientProfile, session, refreshDeck } = useSupabase();
+    const { clearHistory } = useCheckInStorage();
     const [showTimePicker, setShowTimePicker] = useState(false);
 
     const paired = settings.pairingCode.length === 6;
@@ -79,7 +84,11 @@ export default function SettingsScreen() {
                     <View style={styles.profileText}>
                         <Text style={styles.profileName}>Your PenguinPals</Text>
                         <Text style={styles.profileStatus}>
-                            {paired ? `Paired · ${settings.pairingCode}` : 'Not paired with a doctor'}
+                            {paired 
+                                ? (patientProfile?.doctors?.name 
+                                    ? `Paired with ${patientProfile.doctors.name}` 
+                                    : `Paired · ${settings.pairingCode}`)
+                                : 'Not paired with a doctor'}
                         </Text>
                     </View>
                 </View>
@@ -104,9 +113,47 @@ export default function SettingsScreen() {
                 <Text style={styles.sectionLabel}>ACCOUNT</Text>
                 <View style={styles.card}>
                     <SettingsRow
-                        label="Pairing code"
-                        value={paired ? settings.pairingCode : 'Not set'}
-                        onPress={() => Alert.alert('Pairing', 'Enter your pairing code in the onboarding flow.')}
+                        label="Pairing Status"
+                        value={paired ? 'Tap to unpair' : 'Tap to pair'}
+                        onPress={() => {
+                            if (paired) {
+                                Alert.alert(
+                                    'Already Paired', 
+                                    'You are currently paired. Do you want to disconnect and reset the app?',
+                                    [
+                                        { text: 'Cancel', style: 'cancel' },
+                                        { text: 'Unpair & Reset', style: 'destructive', onPress: async () => {
+                                            await supabase.auth.signOut();
+                                            updateSetting('pairingCode', '');
+                                            Alert.alert('Reset', 'Your app has been successfully unpaired.');
+                                        }}
+                                    ]
+                                );
+                                return;
+                            }
+                            Alert.prompt(
+                                'Pair with Doctor',
+                                'Enter the 6-digit code provided by your doctor.',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { text: 'Pair', onPress: async (code?: string) => {
+                                        if (!code || code.trim().length !== 6) {
+                                            Alert.alert('Error', 'Please enter a valid 6-character code.');
+                                            return;
+                                        }
+                                        try {
+                                            const secureCode = code.trim().toUpperCase();
+                                            await pairWithDoctor(secureCode);
+                                            updateSetting('pairingCode', secureCode);
+                                            Alert.alert('Success', 'Successfully paired with your doctor!');
+                                        } catch (e: any) {
+                                            Alert.alert('Pairing Failed', e.message || 'Invalid code.');
+                                        }
+                                    }}
+                                ],
+                                'plain-text'
+                            );
+                        }}
                     />
                     <View style={styles.divider} />
                     <SettingsRow label="Version" value="1.0.0" />
@@ -143,6 +190,56 @@ export default function SettingsScreen() {
                                     </Pressable>
                                 );
                             })}
+                        </View>
+                        <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg }}>
+                            <Text style={styles.rowLabel}>Mock Device Date (Days Offset)</Text>
+                            <Text style={[styles.rowValue, { marginTop: 2, marginBottom: Spacing.md }]}>Simulate future check-ins</Text>
+                            
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+                                <Pressable style={[styles.ghostButton, { flex: 1 }]} onPress={() => updateSetting('debugDateOffset', settings.debugDateOffset - 1)}>
+                                    <Text style={styles.ghostBtnText}>- 1 Day</Text>
+                                </Pressable>
+                                <Text style={[styles.rowLabel, { minWidth: 60, textAlign: 'center' }]}>
+                                    {settings.debugDateOffset > 0 ? '+' : ''}{settings.debugDateOffset} Days
+                                </Text>
+                                <Pressable style={[styles.ghostButton, { flex: 1 }]} onPress={() => updateSetting('debugDateOffset', settings.debugDateOffset + 1)}>
+                                    <Text style={styles.ghostBtnText}>+ 1 Day</Text>
+                                </Pressable>
+                                <Pressable style={[styles.ghostButton, { flex: 1, backgroundColor: Colors.ice, borderColor: Colors.ice }]} onPress={() => updateSetting('debugDateOffset', 0)}>
+                                    <Text style={[styles.ghostBtnText, { color: Colors.glacier }]}>Reset</Text>
+                                </Pressable>
+                            </View>
+                        </View>
+                        <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg }}>
+                            <Text style={[styles.rowLabel, { marginBottom: Spacing.sm }]}>Data Spoofing</Text>
+                            <Pressable 
+                                style={[
+                                    styles.ghostButton, 
+                                    { backgroundColor: Colors.aurora, borderColor: Colors.aurora }
+                                ]}
+                                onPress={async () => {
+                                    Alert.alert(
+                                        "Simulate History", 
+                                        "This will generate 30 days of random historical check-in data. Continue?",
+                                        [
+                                            { text: "Cancel", style: "cancel" },
+                                            { text: "Simulate", onPress: async () => {
+                                                try {
+                                                    await simulateHistory(30);
+                                                    Alert.alert("Success", "Generated 30 days of data!");
+                                                } catch(e: any) {
+                                                    Alert.alert("Error", e.message);
+                                                }
+                                            } }
+                                        ]
+                                    );
+                                }}
+                                disabled={syncing}
+                            >
+                                <Text style={[styles.ghostBtnText, { color: '#FFF', fontFamily: Fonts.bodyBold }]}>
+                                    {syncing ? 'GENERATING...' : 'SIMULATE 30 DAYS'}
+                                </Text>
+                            </Pressable>
                         </View>
                     </View>
                 </View>
@@ -384,6 +481,7 @@ const styles = StyleSheet.create({
     ghostButton: {
         alignItems: 'center',
         paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
         borderWidth: 1,
         borderColor: 'rgba(28, 43, 58, 0.1)',
         borderRadius: Radii.md,

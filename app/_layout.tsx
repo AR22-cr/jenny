@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { SupabaseProvider } from '@/hooks/useSupabase';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,7 +38,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <SupabaseProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
@@ -47,6 +48,6 @@ export default function RootLayout() {
         />
       </Stack>
       <StatusBar style="dark" />
-    </>
+    </SupabaseProvider>
   );
 }

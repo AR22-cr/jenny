@@ -43,6 +43,23 @@ export default function PatientsPage() {
     fetchPatients();
   }, []);
 
+  const removePatient = async (patientId: string) => {
+    if (!window.confirm("Are you sure you want to remove this patient? They will be permanently unpaired from your dashboard. This action cannot be undone.")) return;
+    try {
+      // Unpair the patient
+      const { error: patientErr } = await supabase.from('patients').update({ doctor_id: null }).eq('id', patientId);
+      if (patientErr) throw patientErr;
+      
+      // Archive their active decks so they aren't stuck checking into a dead queue
+      await supabase.from('decks').update({ status: 'archived' }).eq('patient_id', patientId);
+      
+      // Refresh
+      fetchPatients();
+    } catch (err: any) {
+      alert("Failed to remove patient: " + err.message);
+    }
+  };
+
   const generateCode = () => {
     // Generate a random 6-digit number string between 100000 and 999999
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -158,8 +175,9 @@ export default function PatientsPage() {
                         {p.check_in_time} ({p.timezone})
                       </td>
                       <td>{p.streak} days</td>
-                      <td>
+                      <td style={{ display: 'flex', gap: '8px' }}>
                         <Link href={`/patients/${p.id}`} className="text-btn">Edit Deck</Link>
+                        <button onClick={() => removePatient(p.id)} className="text-btn" style={{ color: 'var(--blush)' }}>Remove</button>
                       </td>
                     </tr>
                   );

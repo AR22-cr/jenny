@@ -58,7 +58,6 @@ export default function CompleteScreen() {
                     <Text style={styles.title}>All done for tonight.</Text>
                     <Text style={styles.subtitle}>
                         Pip will see you tomorrow night.{'\n'}
-                        Your doctor will review this before your next appointment.
                     </Text>
                 </Animated.View>
 

@@ -12,6 +12,7 @@ export interface AppSettings {
     pairingCode: string;
     hasCompletedOnboarding: boolean;
     debugHourOverride: number | null;
+    debugDateOffset: number;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -20,6 +21,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     pairingCode: '',
     hasCompletedOnboarding: false,
     debugHourOverride: null,
+    debugDateOffset: 0,
 };
 
 export function useSettings() {

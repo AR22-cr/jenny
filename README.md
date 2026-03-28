@@ -1,81 +1,42 @@
-# PenguinPals 🐧
+# PenguinPals
 
-Welcome to the **PenguinPals** monorepo! This application is designed to create a frictionless, modern, and playful check-in experience between patients and their healthcare providers. It consists of two major components:
-1. **The Patient App (React Native/Expo)**: A beautifully designed mobile application where patients complete dynamic check-ins with "Pip," their penguin companion.
-2. **The Doctor Dashboard (Next.js)**: A sleek, modern web platform where providers can monitor patient streaks, view check-in histories, and build custom question decks.
+An integrated, end-to-end pediatric health tracking system connecting a playful Expo React Native patient app to a secure Next.js Doctor Dashboard via a real-time Supabase backend.
 
-Both applications share a centralized backend powered by **Supabase**.
+## Architecture Structure
+This repository operates as a monorepo spanning two distinct codebases connected to a single Supabase backend:
+- `/` (Root): The Patient-facing iOS/Android application built on Expo Router & React Native.
+- `/dashboard`: The Doctor-facing web analytics portal built on Next.js 14 App Router.
 
----
+## Getting Started
 
-## 🚀 Getting Started
+### 1. Database Setup (Supabase)
+This project requires a Supabase PostgreSQL instance. 
+1. Create a new Supabase project.
+2. Disable "Confirm Email" in Auth -> Providers.
+3. Run the complete SQL migration file (`supabase/migrations/001_schema.sql`) in the Supabase SQL Editor to generate the schema, policies, and base question library.
 
-To collaborate on this project, you will need to run both the Expo mobile app and the Next.js web dashboard locally. 
+### 2. Environment Variables
+Copy the `.env.example` file to create local `.env` files for both the Mobile and Dashboard environments:
+- Root `.env` (for Expo)
+- `dashboard/.env.local` (for Next.js)
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) (v18+ recommended)
-- [npm](https://www.npmjs.com/) or yarn
-- iOS Simulator or Android Emulator (for running the Expo app natively)
-
-### 1. Database Configuration (Supabase)
-
-For security, we **do not** commit our actual database keys to this repository. You must either obtain the development keys from the project owner, or spin up your own Supabase instance.
-
-**Option A: Connect to the Team Database**
-1. Ask the project owner for the `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
-2. Copy `.env.example` in the root folder to `.env` and fill it out:
-   ```bash
-   cp .env.example .env
-   ```
-3. Copy `dashboard/.env.example` to `dashboard/.env.local` and fill it out:
-   ```bash
-   cp dashboard/.env.example dashboard/.env.local
-   ```
-
-**Option B: Spin up your own Staging Database**
-If you want to experiment without touching production data:
-1. Create a free account at [Supabase](https://supabase.com/).
-2. Create a new project.
-3. Once the database is ready, go to the **SQL Editor**, paste the contents of the `combined_schema.sql` (found in the root or provided by the team), and click **Run**. This will instantly duplicate the entire table architecture, Row Level Security (RLS) policies, and foreign keys!
-4. Grab your new Project URL and Anon Key from the Supabase settings and place them in the `.env` files mentioned above.
-
----
-
-### 2. Running the Patient App (Expo Root)
-
-The mobile application lives in the root of the repository.
-
+### 3. Running the Patient App (Mobile)
 ```bash
-# Install dependencies
 npm install
-
-# Start the Expo development server
 npx expo start
 ```
-*Press `i` in the terminal to launch the iOS simulator, or scan the QR code with the Expo Go app on your physical device.*
+*Note: The patient app functions fully offline using an AsyncStorage queue, syncing payload chunks securely when a connection is restored.*
 
-### 3. Running the Doctor Dashboard (Next.js)
-
-The web dashboard is isolated in the `/dashboard` directory.
-
+### 4. Running the Doctor Dashboard (Web)
+Open a separate terminal window:
 ```bash
-# Navigate to the dashboard directory
 cd dashboard
-
-# Install dependencies
 npm install
-
-# Start the Next.js development server
 npm run dev
 ```
-*Open [http://localhost:3000](http://localhost:3000) in your browser to view the portal.*
+Navigate to `http://localhost:3000` to access the portal.
 
----
-
-## 🎨 Architecture & Styling Notes
-- **Frictionless UI**: Both targets use a unified, playful light theme defined by `--fog`, `--snow`, and `--glacier` standard colors.
-- **Lucide Icons**: We use `lucide-react` and `lucide-react-native` exclusively for scalable, sleek vector iconography. Avoid committing raw OS emojis or ASCII art to maintain a premium feel.
-- **Real-time Sync**: The mobile app subscribes to the `doctors` and `patients` schema via Supabase real-time channels to fetch active question decks instantly.
-
----
-*Happy coding!*
+## Core Features
+1. **Pairing 6-Digit Codes**: Doctors spawn secure 48-hour codes dynamically in the Web Dashboard. Patients enter the code to lock their local `device_id` to the Doctor's telemetry stream.
+2. **Parametric Avatars (Pip)**: The mobile app's primary emotion-tracker bypasses heavy image blobs by utilizing pure parametric `react-native-svg` mathematics, dynamically skewing bezier vectors to display 14 specific emotional aliases instantly.
+3. **Categorical Heatgrids**: Rather than just tracking linear timelines, the Dashboard incorporates highly specialized Github-style categorical chronologies to explicitly map qualitative "Yes/No" and "Pain Type" string triggers securely alongside raw temporal arrays.

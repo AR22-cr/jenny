@@ -8,25 +8,13 @@
 import { Colors, Fonts, FontSizes, Radii, Shadows, Spacing } from '@/constants/theme';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Pip from '../Pip';
 
 const MOODS = [
     ['Joyful', 'Calm', 'Hopeful'],
     ['Tired', 'Neutral', 'Restless'],
     ['Sad', 'Anxious', 'Irritable'],
 ];
-
-// Simple stylized face marks (placeholder for Pip illustrations)
-const MOOD_FACES: Record<string, string> = {
-    Joyful: '◠▽◠',
-    Calm: '–‿–',
-    Hopeful: '◠‿◠',
-    Tired: '–_–',
-    Neutral: '◦_◦',
-    Restless: '◉_◉',
-    Sad: '·_·',
-    Anxious: '◠_◠',
-    Irritable: '>_<',
-};
 
 interface Props {
     value: string | null;
@@ -46,11 +34,10 @@ export default function MoodGrid({ value, onChange }: Props) {
                                 style={[styles.cell, isSelected && styles.cellSelected]}
                                 onPress={() => onChange(mood)}
                             >
-                                {/* Pip face placeholder */}
+                                {/* Pip vector render */}
                                 <View style={[styles.faceCircle, isSelected && styles.faceCircleSelected]}>
-                                    <Text style={[styles.face, isSelected && styles.faceSelected]}>
-                                        {MOOD_FACES[mood]}
-                                    </Text>
+                                    {/* The string 'Joyful' maps natively to the Pip vector alias list */}
+                                    <Pip mood={mood as any} size={44} showLabel={false} />
                                 </View>
                                 <Text style={[styles.label, isSelected && styles.labelSelected]}>{mood}</Text>
                             </Pressable>
@@ -93,24 +80,15 @@ const styles = StyleSheet.create({
         transform: [{ scale: 1.03 }],
     },
     faceCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: Colors.fog,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
     },
     faceCircleSelected: {
-        backgroundColor: 'rgba(91, 163, 191, 0.15)',
-    },
-    face: {
-        fontFamily: Fonts.mono,
-        fontSize: 13,
-        color: Colors.ink,
-    },
-    faceSelected: {
-        color: Colors.glacier,
-        fontFamily: Fonts.monoMedium,
+        backgroundColor: 'rgba(91, 163, 191, 0.1)',
+        transform: [{ scale: 1.1 }],
     },
     // §5.5: label below
     label: {

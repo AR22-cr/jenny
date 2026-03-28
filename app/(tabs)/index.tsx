@@ -16,28 +16,30 @@ import { useSupabase } from '@/hooks/useSupabase';
 import { Flame } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { Dimensions, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback } from 'react';
+import { Dimensions, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View, RefreshControl } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
-const MOTIVATIONS = [
-    "Pip is here whenever you're ready. No rush.",
-    "You're doing great. Every check-in matters.",
-    "Short night? All questions are optional unless marked required.",
-    "Your doctor will review this before your next appointment.",
-    "Consistency is kindness to your future self.",
-];
+
 
 export default function HomeScreen() {
     const router = useRouter();
-    const { getStreak, getRecentCheckIns } = useCheckInStorage();
+    const { getStreak, getRecentCheckIns, getSimulatedDate, reload } = useCheckInStorage();
     const { settings } = useSettings();
     
+    useFocusEffect(
+        useCallback(() => {
+            reload();
+        }, [reload])
+    );
+
     // Apply time override if active
+    const simulatedDate = getSimulatedDate();
     const hour = settings.debugHourOverride !== null 
         ? settings.debugHourOverride 
-        : new Date().getHours();
+        : simulatedDate.getHours();
         
     const isEvening = hour >= 17;
     const isNight = hour >= 20 || hour < 5;
@@ -46,8 +48,7 @@ export default function HomeScreen() {
     const greeting = isMorning ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     const streak = getStreak();
     const recentCheckIns = getRecentCheckIns(5);
-    const dayIndex = new Date().getDate();
-    const motivation = MOTIVATIONS[dayIndex % MOTIVATIONS.length];
+    const dayIndex = simulatedDate.getDate();
 
     // §5.4: Day/night sky changes based on time of day
     const skyColors = (isNight || isEvening
@@ -55,7 +56,18 @@ export default function HomeScreen() {
         : [Colors.fog, '#DEE9F2', Colors.fog] as const); // Daytime soft blue
 
     const pipMood = isNight ? 'sleepy' : isEvening ? 'curious' : 'happy';
-    const { activeDeck, loadingDeck } = useSupabase();
+    const { activeDeck, loadingDeck, refreshDeck } = useSupabase();
+
+    // Temporal lockout logic
+    const latestCheckIn = recentCheckIns[0];
+    const todayStr = simulatedDate.toISOString().split('T')[0];
+    const isCompletedToday = latestCheckIn && latestCheckIn.date === todayStr;
+
+    let completedTimeLabel = '';
+    if (isCompletedToday && latestCheckIn.completedAt) {
+        const d = new Date(latestCheckIn.completedAt);
+        completedTimeLabel = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -71,9 +83,11 @@ export default function HomeScreen() {
                     {loadingDeck ? 'Checking with your doctor...'
                         : !activeDeck
                             ? "Your doctor hasn't assigned a check-in deck yet."
-                            : isEvening || isNight
-                                ? "Tonight's check-in is ready."
-                                : 'Your next check-in is tonight.'}
+                            : isCompletedToday
+                                ? `You checked in today at ${completedTimeLabel}.`
+                                : isEvening || isNight
+                                    ? "Tonight's check-in is ready."
+                                    : 'Your next check-in is tonight.'}
                 </Text>
 
                 {streak > 0 && (
@@ -84,18 +98,30 @@ export default function HomeScreen() {
                 )}
             </LinearGradient>
 
-            <View style={styles.content}>
+            <ScrollView 
+                style={styles.content}
+                refreshControl={
+                    <RefreshControl refreshing={loadingDeck} onRefresh={refreshDeck} tintColor={Colors.glacier} />
+                }
+            >
                 {/* §5.4: Check-In CTA — aurora fill, full-width, 28px radius */}
                 <Pressable
                     style={({ pressed }) => [
                         styles.ctaButton, 
-                        pressed && activeDeck && styles.ctaPressed,
-                        (!activeDeck || loadingDeck) && { backgroundColor: Colors.slate, opacity: 0.8 }
+                        pressed && activeDeck && !isCompletedToday && styles.ctaPressed,
+                        (!activeDeck || loadingDeck || isCompletedToday) && { backgroundColor: Colors.slate, opacity: 0.8 }
                     ]}
-                    onPress={() => activeDeck && !loadingDeck && router.push('/check-in')}
+                    onPress={() => {
+                        if (activeDeck && !loadingDeck && !isCompletedToday) {
+                            router.push('/check-in');
+                        }
+                    }}
                 >
                     <Text style={styles.ctaText}>
-                        {loadingDeck ? 'Loading...' : activeDeck ? 'Start Check-In' : 'Waiting on Doctor...'}
+                        {loadingDeck ? 'Loading...' 
+                            : !activeDeck ? 'Waiting on Doctor...' 
+                            : isCompletedToday ? 'Check-In Complete' 
+                            : 'Start Check-In'}
                     </Text>
                 </Pressable>
 
@@ -135,9 +161,8 @@ export default function HomeScreen() {
                     </ScrollView>
                 )}
 
-                {/* §5.4: Motivational Micro-copy */}
-                <Text style={styles.motivation}>{motivation}</Text>
-            </View>
+
+            </ScrollView>
         </SafeAreaView>
     );
 }

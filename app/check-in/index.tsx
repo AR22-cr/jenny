@@ -37,7 +37,7 @@ import YesNo from '@/components/questions/YesNo';
 
 export default function CheckInScreen() {
     const router = useRouter();
-    const { addCheckIn } = useCheckInStorage();
+    const { addCheckIn, getSimulatedDate } = useCheckInStorage();
     const { activeDeck, submitResponse, createCheckInSession } = useSupabase();
     
     const questions = activeDeck?.questions || [];
@@ -101,28 +101,37 @@ export default function CheckInScreen() {
         }
     };
 
-    const currentAnswer = answers[question.id];
+    const currentAnswer = question ? answers[question.id] : undefined;
     const hasAnswer = currentAnswer !== undefined && currentAnswer !== null && currentAnswer !== '';
-    const progress = (currentIndex + (hasAnswer ? 1 : 0)) / total;
+    const progress = total > 0 ? (currentIndex + (hasAnswer ? 1 : 0)) / total : 0;
 
     // Determine Pip mood from answer context
     const getPipMood = () => {
-        if (!hasAnswer) return 'neutral' as const;
+        if (!hasAnswer || !question) return 'neutral' as const;
         if (question.type === 'scale_10' && typeof currentAnswer === 'number' && currentAnswer >= 7)
             return 'concerned' as const;
         return 'happy' as const;
     };
 
-    const dateStr = new Date().toLocaleDateString('en-US', {
+    const dateStr = getSimulatedDate().toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
     });
 
-    if (!activeDeck || questions.length === 0) {
+    if (!activeDeck || questions.length === 0 || !question) {
         return (
-            <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color={Colors.glacier} />
+            <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: Spacing.xl }]}>
+                <Pip size={64} mood="neutral" />
+                <Text style={[styles.questionText, { textAlign: 'center', marginTop: Spacing.xl, fontSize: 20 }]}>
+                    No Questions Yet
+                </Text>
+                <Text style={[styles.durationHint, { marginBottom: Spacing.xl, fontSize: 14 }]}>
+                    Your doctor hasn't added any specific questions to your deck. Check back later!
+                </Text>
+                <Pressable onPress={() => router.back()} style={styles.nextButton}>
+                    <Text style={styles.nextText}>Go Back</Text>
+                </Pressable>
             </SafeAreaView>
         );
     }
