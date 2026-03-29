@@ -411,6 +411,9 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
         const qText = r.questions?.text;
         if (!qText) return;
 
+        // Skip multi_select questions — the n8n pipeline doesn't support multi-valued categoricals
+        if (r.questions.type === 'multi_select') return;
+
         // Get raw answer value (don't encode — the n8n pipeline handles encoding)
         let answer = r.value;
         if (answer === undefined || answer === null || answer === '') return;
@@ -418,6 +421,14 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
         // For yes_no, send as string "yes"/"no" for n8n boolean encoding
         if (r.questions.type === 'yes_no') {
           answer = (answer === true || answer === 'true') ? 'yes' : 'no';
+        }
+
+        // Multi-select values come as arrays or comma-separated strings.
+        // The n8n expects a single categorical value, so pick the first one.
+        if (Array.isArray(answer)) {
+          answer = answer[0];
+        } else if (typeof answer === 'string' && answer.includes(',') && r.questions.type?.startsWith('multi_')) {
+          answer = answer.split(',')[0].trim();
         }
 
         if (!grouped[qText]) {
@@ -464,10 +475,17 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
         throw new Error(`Webhook returned ${res.status}: ${errBody || res.statusText}`);
       }
 
-      const data = await res.json();
+      // 6. Parse response safely (n8n may return non-JSON on errors)
+      const responseText = await res.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(`n8n returned invalid JSON: ${responseText.slice(0, 200)}`);
+      }
       console.log('🧠 [AI] Response:', data);
 
-      // 6. Extract the generated summary
+      // 7. Extract the generated summary
       const blurb = data.output || data.text || data.message || data.result || data.summary || JSON.stringify(data);
       setAiInsight(blurb);
     } catch (e: any) {

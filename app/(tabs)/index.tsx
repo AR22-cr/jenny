@@ -8,6 +8,7 @@ import { Colors, Fonts, FontSizes, Radii, Shadows, Spacing } from '@/constants/t
 import { useCheckInStorage } from '@/hooks/useStorage';
 import { useSettings } from '@/hooks/useSettings';
 import { useSupabase } from '@/hooks/useSupabase';
+import Sparkline from '@/components/Sparkline';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Flame, CheckCircle, Clock, BarChart3 } from 'lucide-react-native';
 import React, { useCallback } from 'react';
@@ -41,7 +42,8 @@ export default function HomeScreen() {
         useCallback(() => {
             reload();
             reloadSettings();
-        }, [reload, reloadSettings])
+            refreshTrends();
+        }, [reload, reloadSettings, refreshTrends])
     );
 
     const simulatedDate = getSimulatedDate(settings.debugDateOffset);
@@ -58,7 +60,7 @@ export default function HomeScreen() {
     const recentCheckIns = getRecentCheckIns(5);
 
     const jennyMood = isNight ? 'sleepy' : isEvening ? 'curious' : 'happy';
-    const { activeDeck, loadingDeck, refreshDeck, patientProfile } = useSupabase();
+    const { activeDeck, loadingDeck, refreshDeck, patientProfile, trendData, refreshTrends } = useSupabase();
 
     // Temporal lockout
     const latestCheckIn = recentCheckIns[0];
@@ -200,6 +202,41 @@ export default function HomeScreen() {
                         <Text style={styles.widgetSub}>{lastCheckInFull}</Text>
                     </Animated.View>
                 </View>
+
+                {/* ══════ My Trends (Sparklines) ══════ */}
+                {trendData.length > 0 && (
+                    <Animated.View entering={FadeInUp.delay(420).duration(500).springify()} style={styles.trendsSection}>
+                        <Text style={styles.trendsTitle}>My Trends</Text>
+                        <View style={styles.trendsGrid}>
+                            {trendData.map((trend, idx) => {
+                                const sparkColors = ['#FF6B8A', '#6B8F71', '#7C6AEF', '#FF8C42', '#3b82f6', '#0d9488'];
+                                const sparkColor = sparkColors[idx % sparkColors.length];
+                                const delta = trend.values.length >= 2 
+                                    ? trend.latest - trend.values[trend.values.length - 2] 
+                                    : 0;
+                                const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
+                                const deltaColor = delta > 0 ? '#6B8F71' : delta < 0 ? '#e74c3c' : Colors.slate;
+                                return (
+                                    <View key={trend.questionText} style={styles.trendCard}>
+                                        <View style={styles.trendCardTop}>
+                                            <Text style={styles.trendLabel} numberOfLines={1}>{trend.questionText}</Text>
+                                            <View style={styles.trendValueRow}>
+                                                <Text style={styles.trendValue}>{trend.latest}</Text>
+                                                <Text style={[styles.trendDelta, { color: deltaColor }]}>{arrow}</Text>
+                                            </View>
+                                        </View>
+                                        <Sparkline 
+                                            values={trend.values} 
+                                            width={SMALL_WIDGET_W - 24} 
+                                            height={36} 
+                                            color={sparkColor} 
+                                        />
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    </Animated.View>
+                )}
 
                 {/* ══════ Recent Activity ══════ */}
                 <Animated.View entering={FadeInUp.delay(450).duration(500).springify()} style={styles.recentWidget}>
@@ -456,5 +493,53 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.body,
         fontSize: FontSizes.xs,
         color: Colors.slate,
+    },
+
+    // ══════ My Trends (Sparklines) ══════
+    trendsSection: {
+        marginBottom: GRID_GAP,
+    },
+    trendsTitle: {
+        fontFamily: Fonts.bodyBold,
+        fontSize: FontSizes.sm,
+        color: Colors.ink,
+        marginBottom: 8,
+        paddingHorizontal: 2,
+    },
+    trendsGrid: {
+        gap: GRID_GAP,
+    },
+    trendCard: {
+        backgroundColor: Colors.snow,
+        borderRadius: Radii.widget,
+        padding: 12,
+    },
+    trendCardTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    trendLabel: {
+        fontFamily: Fonts.body,
+        fontSize: 12,
+        color: Colors.slate,
+        flex: 1,
+        marginRight: 8,
+    },
+    trendValueRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+    },
+    trendValue: {
+        fontFamily: Fonts.displayBold,
+        fontSize: 18,
+        color: Colors.ink,
+        letterSpacing: -0.5,
+    },
+    trendDelta: {
+        fontFamily: Fonts.mono,
+        fontSize: 14,
     },
 });
