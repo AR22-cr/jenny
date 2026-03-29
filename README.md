@@ -1,6 +1,6 @@
 # Jenny
 
-A patient health tracking app that connects patients with their doctors. Patients check in daily through a mobile app, and doctors monitor trends through a web dashboard — powered by AI-generated clinical summaries.
+A patient health tracking app that connects patients with their doctors. Patients check in daily through a mobile app, and where doctors can monitor trends through a web dashboards.
 
 ## How It Works
 
