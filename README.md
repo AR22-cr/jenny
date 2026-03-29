@@ -11,7 +11,7 @@ A patient health tracking app that connects patients with their doctors. Patient
 ## Project Structure
 
 ```
-/                → Patient mobile app (Expo + React Native)
+/app                → Patient mobile app (Expo + React Native)
 /dashboard       → Doctor web dashboard (Next.js 14)
 /shared          → Shared TypeScript types
 /supabase        → Database migrations
