@@ -11,7 +11,7 @@
  * - "Skip" 14px slate, bottom-center (non-required only)
  * - "Done in ~2 min" duration estimate
  */
-import Pip from '@/components/Pip';
+import Jenny from '@/components/Jenny';
 import { Animation, Colors, Fonts, FontSizes, Radii, Shadows, Spacing } from '@/constants/theme';
 import { Question } from '@/shared/types';
 import { useCheckInStorage } from '@/hooks/useStorage';
@@ -19,6 +19,7 @@ import { useSupabase } from '@/hooks/useSupabase';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -34,6 +35,7 @@ import Scale5 from '@/components/questions/Scale5';
 import Scale7 from '@/components/questions/Scale7';
 import TextShort from '@/components/questions/TextShort';
 import YesNo from '@/components/questions/YesNo';
+import Duration from '@/components/questions/Duration';
 
 export default function CheckInScreen() {
     const router = useRouter();
@@ -105,7 +107,7 @@ export default function CheckInScreen() {
     const hasAnswer = currentAnswer !== undefined && currentAnswer !== null && currentAnswer !== '';
     const progress = total > 0 ? (currentIndex + (hasAnswer ? 1 : 0)) / total : 0;
 
-    // Determine Pip mood from answer context
+    // Determine Jenny mood from answer context
     const getPipMood = () => {
         if (!hasAnswer || !question) return 'neutral' as const;
         if (question.type === 'scale_10' && typeof currentAnswer === 'number' && currentAnswer >= 7)
@@ -122,7 +124,7 @@ export default function CheckInScreen() {
     if (!activeDeck || questions.length === 0 || !question) {
         return (
             <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: Spacing.xl }]}>
-                <Pip size={64} mood="neutral" />
+                <Jenny size={64} mood="neutral" />
                 <Text style={[styles.questionText, { textAlign: 'center', marginTop: Spacing.xl, fontSize: 20 }]}>
                     No Questions Yet
                 </Text>
@@ -151,16 +153,23 @@ export default function CheckInScreen() {
                 )}
 
                 <View style={styles.headerRight}>
-                    {/* §5.5: Pip small, top-right, reacting to answers */}
-                    <Pip size={32} mood={getPipMood()} />
+                    {/* §5.5: Jenny small, top-right, reacting to answers */}
+                    <Jenny size={32} mood={getPipMood()} />
                     {/* §5.5: "Check-In · [Day], [Date]" DM Mono 13px slate */}
                     <Text style={styles.headerLabel}>Check-In · {dateStr}</Text>
                 </View>
             </View>
 
-            {/* §5.5: Progress bar — thin line, glacier fill */}
+            {/* §5.5: Progress bar — gradient fill */}
             <View style={styles.progressTrack}>
-                <Animated.View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+                <Animated.View style={[{ width: `${progress * 100}%`, height: '100%' }]}>
+                    <LinearGradient
+                        colors={[Colors.glacier, Colors.aurora]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={{ flex: 1, borderRadius: 2 }}
+                    />
+                </Animated.View>
             </View>
 
             {/* §5.5: "Done in ~2 min" */}
@@ -194,18 +203,26 @@ export default function CheckInScreen() {
                     </Pressable>
                 )}
 
-                {/* §5.5: "Next →" glacier fill, full-width, 56px tall */}
+                {/* §5.5: "Next →" gradient fill, full-width, 56px tall */}
                 <Pressable
-                    style={[
-                        styles.nextButton,
+                    style={({ pressed }) => [
+                        styles.nextOuter,
                         question.is_required && !hasAnswer && styles.nextButtonDisabled,
+                        pressed && !(question.is_required && !hasAnswer) && { transform: [{ scale: 0.98 }], opacity: 0.92 },
                     ]}
                     onPress={goNext}
                     disabled={question.is_required && !hasAnswer}
                 >
-                    <Text style={styles.nextText}>
-                        {currentIndex === total - 1 ? 'Finish' : 'Next →'}
-                    </Text>
+                    <LinearGradient
+                        colors={[Colors.glacier, '#E8568A', '#D4477A']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0.5 }}
+                        style={styles.nextButton}
+                    >
+                        <Text style={styles.nextText}>
+                            {currentIndex === total - 1 ? 'Finish' : 'Next →'}
+                        </Text>
+                    </LinearGradient>
                 </Pressable>
             </View>
         </SafeAreaView>
@@ -232,6 +249,8 @@ function renderQuestion(question: Question, value: any, onChange: (val: any) => 
             return <MoodGrid value={value ?? null} onChange={onChange} />;
         case 'text_short':
             return <TextShort value={value ?? ''} onChange={onChange} />;
+        case 'duration':
+            return <Duration value={value ?? null} onChange={onChange} />;
         default:
             return <Text style={{ color: Colors.slate }}>Unsupported: {question.type}</Text>;
     }
@@ -334,15 +353,23 @@ const styles = StyleSheet.create({
         fontSize: FontSizes.sm,
         color: Colors.slate,
     },
-    // §5.5: glacier fill, full-width, 56px tall
+    // §5.5: glacier gradient fill, full-width, 56px tall
+    nextOuter: {
+        borderRadius: Radii.xl,
+        width: '100%',
+        overflow: 'hidden',
+        shadowColor: Colors.glacier,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 6,
+    },
     nextButton: {
-        backgroundColor: Colors.glacier,
         height: 56,
-        borderRadius: Radii.xl, // 28px
+        borderRadius: Radii.xl,
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
-        ...Shadows.elevated,
     },
     nextButtonDisabled: {
         opacity: 0.35,

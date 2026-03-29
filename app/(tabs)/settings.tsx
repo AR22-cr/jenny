@@ -4,7 +4,7 @@
  * Notification time, preferences, account
  * Persisted via AsyncStorage
  */
-import Pip from '@/components/Pip';
+import Jenny from '@/components/Jenny';
 import { Colors, Fonts, FontSizes, Radii, Shadows, Spacing } from '@/constants/theme';
 import { useSettings } from '@/hooks/useSettings';
 import { useCheckInStorage } from '@/hooks/useStorage';
@@ -75,14 +75,13 @@ export default function SettingsScreen() {
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.headerArea}>
                     <Text style={styles.title}>Settings</Text>
-                    <Text style={styles.subtitle}>PREFERENCES</Text>
                 </View>
 
                 {/* Profile card */}
                 <View style={styles.profileCard}>
-                    <Pip size={56} mood="happy" />
+                    <Jenny size={56} mood="happy" />
                     <View style={styles.profileText}>
-                        <Text style={styles.profileName}>Your PenguinPals</Text>
+                        <Text style={styles.profileName}>Your Jenny</Text>
                         <Text style={styles.profileStatus}>
                             {paired 
                                 ? (patientProfile?.doctors?.name 
@@ -315,9 +314,9 @@ const styles = StyleSheet.create({
     },
     title: {
         fontFamily: Fonts.displayBold,
-        fontSize: FontSizes.xl,
+        fontSize: 28,
         color: Colors.ink,
-        lineHeight: FontSizes.xl * 1.1,
+        letterSpacing: -0.5,
         marginBottom: Spacing.xs,
     },
     subtitle: {
@@ -440,9 +439,9 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.md,
     },
     modalClose: {
-        fontFamily: Fonts.mono,
-        fontSize: FontSizes.sm,
-        color: Colors.slate,
+        fontFamily: Fonts.bodyBold,
+        fontSize: FontSizes.base,
+        color: Colors.glacier,
     },
     modalTitle: {
         fontFamily: Fonts.displayBold,

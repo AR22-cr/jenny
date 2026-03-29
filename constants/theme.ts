@@ -1,5 +1,5 @@
 /**
- * PenguinPals Design System
+ * Jenny Design System
  * ─────────────────────────────────────────
  * Style: Warm Nordic minimalism meets playful illustration.
  * Think Headspace circa 2018 × Scandinavian health clinic.
@@ -10,18 +10,18 @@
  * Feeling: Trustworthy, cozy, slightly whimsical, genuinely premium.
  */
 
-// ─── Color Palette (§1.3) ───────────────────────────────────
+// ─── Color Palette (§1.3) — Flo-inspired warm pink ──────────
 export const Colors = {
   midnight: '#0D1B2A',  // Doctor dashboard backgrounds, data-heavy views
-  ink: '#1C2B3A',  // Primary text
-  fog: '#E8F1F8',  // Patient-facing light blue background
-  snow: '#FAFAF7',  // Cards, modals
-  glacier: '#5BA3BF',  // Primary accent (interactive elements, highlights)
-  aurora: '#E8A87C',  // Warm accent (notifications, Pip, CTAs)
-  moss: '#6B8F71',  // Positive/green confirmations
-  blush: '#D4788A',  // Alert states, high-concern flags
-  slate: '#7A8C96',  // Secondary text, disabled states
-  ice: '#DDF0F5',  // Subtle tint backgrounds, scale fills
+  ink: '#2D2D3A',  // Primary text — slightly warmer charcoal
+  fog: '#F2F2F7',  // Patient-facing Apple system grey background
+  snow: '#FFFFFF',  // Cards, modals — pure white for contrast
+  glacier: '#FF6B8A',  // Primary accent — rose pink (CTAs, interactive)
+  aurora: '#F5A3B5',  // Warm accent — soft pink (secondary highlights)
+  moss: '#4CAF7D',  // Positive/green confirmations
+  blush: '#E53E6B',  // Alert states, high-concern flags
+  slate: '#9E9EA7',  // Secondary text, disabled states
+  ice: '#FDEEF1',  // Subtle pink tint backgrounds
 } as const;
 
 // ─── Typography (§1.4) ─────────────────────────────────────
@@ -85,8 +85,9 @@ export const Spacing = {
 export const Radii = {
   sm: 8,
   md: 12,  // multi_choice option pills
-  lg: 20,  // Cards
+  lg: 22,  // Cards — Apple widget radius
   xl: 28,  // Primary buttons
+  widget: 22,  // iOS widget card radius
   full: 999,  // Pills / circles
 } as const;
 

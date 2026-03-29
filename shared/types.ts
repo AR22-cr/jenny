@@ -1,5 +1,5 @@
 /**
- * PenguinPals — Shared Types
+ * Jenny — Shared Types
  * ──────────────────────────
  * Used by both patient app and doctor dashboard.
  * Mirrors the Supabase/Postgres schema exactly.
@@ -67,6 +67,7 @@ export interface Question {
   tags: string[];
   is_required: boolean;
   created_from: 'library' | 'custom';
+  metric_key?: string;  // Maps to webhook metric name (e.g., "mood", "pain")
 }
 
 export interface QuestionConfig {

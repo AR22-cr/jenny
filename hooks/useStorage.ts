@@ -5,9 +5,8 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
-import { useSettings } from './useSettings';
 
-const STORAGE_KEY = '@penguinpals:checkins';
+const STORAGE_KEY = '@jenny:checkins';
 
 export interface StoredCheckIn {
     id: string;
@@ -32,17 +31,17 @@ async function saveCheckIns(checkIns: StoredCheckIn[]): Promise<void> {
 }
 
 export function useCheckInStorage() {
-    const { settings } = useSettings();
     const [checkIns, setCheckIns] = useState<StoredCheckIn[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const getSimulatedDate = useCallback(() => {
+    // Accepts explicit offset from the caller's fresh settings
+    const getSimulatedDate = useCallback((debugDateOffset: number = 0) => {
         const now = new Date();
-        if (settings.debugDateOffset) {
-            now.setDate(now.getDate() + settings.debugDateOffset);
+        if (debugDateOffset) {
+            now.setDate(now.getDate() + debugDateOffset);
         }
         return now;
-    }, [settings.debugDateOffset]);
+    }, []);
 
     useEffect(() => {
         loadCheckIns().then((data) => {
@@ -54,8 +53,9 @@ export function useCheckInStorage() {
     const addCheckIn = useCallback(async (
         answers: Record<string, any>,
         questionsTotal: number,
+        debugDateOffset: number = 0,
     ) => {
-        const now = getSimulatedDate();
+        const now = getSimulatedDate(debugDateOffset);
         const entry: StoredCheckIn = {
             id: `checkin-${now.getTime()}`,
             date: now.toISOString().split('T')[0],
@@ -77,11 +77,11 @@ export function useCheckInStorage() {
         return checkIns.find((c) => c.id === id) ?? null;
     }, [checkIns]);
 
-    const getStreak = useCallback(() => {
+    const getStreak = useCallback((debugDateOffset: number = 0) => {
         if (checkIns.length === 0) return 0;
 
         let streak = 0;
-        const today = getSimulatedDate();
+        const today = getSimulatedDate(debugDateOffset);
         today.setHours(0, 0, 0, 0);
 
         for (let d = 0; d < 365; d++) {

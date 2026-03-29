@@ -42,7 +42,7 @@ export default function Login() {
   return (
     <main className="dashboard-login">
       <div className="login-card">
-        <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px', marginBottom: '8px' }}>PenguinPals</h1>
+        <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '32px', marginBottom: '8px' }}>Jenny</h1>
         <p>Doctor Dashboard Protocol</p>
         
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '32px' }}>

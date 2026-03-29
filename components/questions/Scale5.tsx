@@ -2,7 +2,7 @@
  * Scale5 (§5.5 — scale_5)
  * ────────────────────────
  * - 5 large circular tap targets in a row
- * - Option A: Pip face variants (hand-drawn moods as placeholder text)
+ * - Option A: Jenny face variants (hand-drawn moods as placeholder text)
  * - Option B: Star fill (1–5), aurora color
  * - Anchors: "Not at all" / "Extremely"
  */

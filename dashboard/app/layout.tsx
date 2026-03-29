@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'PenguinPals · Doctor Dashboard',
+  title: 'Jenny · Doctor Dashboard',
   description: 'Manage patient check-ins and review data.',
 };
 

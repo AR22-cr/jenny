@@ -56,7 +56,7 @@ export default function TabsLayout() {
             <Tabs.Screen
                 name="settings"
                 options={{
-                    tabBarIcon: ({ focused }) => <TabIcon icon={Settings} label="Settings" focused={focused} />,
+                    tabBarIcon: ({ focused }) => <TabIcon icon={Settings} label="Setting" focused={focused} />,
                 }}
             />
         </Tabs>
@@ -66,11 +66,11 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
     tabBar: {
         backgroundColor: Colors.snow,
-        borderTopWidth: 1,
+        borderTopWidth: 3,
         borderTopColor: 'rgba(28, 43, 58, 0.06)',
-        height: 88,
-        paddingTop: 8,
-        paddingBottom: 28,
+        height: 100,
+        paddingTop: 10,
+        paddingBottom: 36,
     },
     tabItem: {
         alignItems: 'center',
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     },
     tabLabel: {
         fontFamily: 'DMMono_500Medium',
-        fontSize: FontSizes.xs,
-        letterSpacing: 0.5,
+        fontSize: 7,
+        letterSpacing: 0.1,
     },
 });

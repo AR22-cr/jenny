@@ -1,14 +1,14 @@
 /**
  * MoodGrid (§5.5 — mood_grid)
  * ────────────────────────────
- * - 3×3 grid of Pip face illustrations (9 moods)
+ * - 3×3 grid of Jenny face illustrations (9 moods)
  * - Each cell: 80×80px rounded square, face + label below
  * - Selected: glacier 2px border, ice tint bg, slight lift
  */
 import { Colors, Fonts, FontSizes, Radii, Shadows, Spacing } from '@/constants/theme';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Pip from '../Pip';
+import Jenny from '../Jenny';
 
 const MOODS = [
     ['Joyful', 'Calm', 'Hopeful'],
@@ -34,10 +34,10 @@ export default function MoodGrid({ value, onChange }: Props) {
                                 style={[styles.cell, isSelected && styles.cellSelected]}
                                 onPress={() => onChange(mood)}
                             >
-                                {/* Pip vector render */}
+                                {/* Jenny vector render */}
                                 <View style={[styles.faceCircle, isSelected && styles.faceCircleSelected]}>
-                                    {/* The string 'Joyful' maps natively to the Pip vector alias list */}
-                                    <Pip mood={mood as any} size={44} showLabel={false} />
+                                    {/* The string 'Joyful' maps natively to the Jenny vector alias list */}
+                                    <Jenny mood={mood as any} size={44} showLabel={false} />
                                 </View>
                                 <Text style={[styles.label, isSelected && styles.labelSelected]}>{mood}</Text>
                             </Pressable>

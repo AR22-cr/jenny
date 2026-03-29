@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
+import { Users, PartyPopper, X } from 'lucide-react';
 
 // Create a secondary client for patient auth generation that doesn't disrupt the doctor's session
 const patientAuthClient = createClient(
@@ -80,7 +81,7 @@ export default function PatientsPage() {
       // 1. Silently sign up the patient in Supabase Auth using the secondary client
       // Note: This requires "Confirm email" to be disabled in Supabase Auth settings!
       const { data: authData, error: authError } = await patientAuthClient.auth.signUp({
-        email: `${code}@penguinpals.health`,
+        email: `${code}@jenny.health`,
         password: `${code}-securepass123`,
       });
 
@@ -136,7 +137,7 @@ export default function PatientsPage() {
           <div className="loading">Loading patients...</div>
         ) : patients.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">👥</div>
+            <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center' }}><Users size={56} color="var(--slate)" strokeWidth={1.5} /></div>
             <h3>No patients found</h3>
             <p>Click "Add Patient" to generate a pairing code for a new patient.</p>
           </div>
@@ -194,14 +195,14 @@ export default function PatientsPage() {
           <div className="modal-content">
             <div className="modal-header">
               <h2>Add New Patient</h2>
-              <button className="close-btn" onClick={() => { setIsAdding(false); setGeneratedCode(''); }}>✕</button>
+              <button className="close-btn" onClick={() => { setIsAdding(false); setGeneratedCode(''); }}><X size={20} /></button>
             </div>
             
             {generatedCode ? (
               <div className="success-state">
-                <div className="success-icon">🎉</div>
+                <div className="success-icon" style={{ display: 'flex', justifyContent: 'center' }}><PartyPopper size={56} color="var(--aurora)" strokeWidth={1.5} /></div>
                 <h3>Patient created successfully!</h3>
-                <p>Give this exact 6-character code to your patient. They will enter it into the PenguinPals mobile app to pair with you.</p>
+                <p>Give this exact 6-character code to your patient. They will enter it into the Jenny mobile app to pair with you.</p>
                 <div className="giant-code">{generatedCode}</div>
                 <p style={{ fontSize: '13px', color: 'var(--slate)' }}>The code is valid for 7 days.</p>
                 <button className="primary-btn" onClick={() => { setIsAdding(false); setGeneratedCode(''); }} style={{ marginTop: '24px', width: '100%' }}>

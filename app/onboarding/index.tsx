@@ -2,18 +2,16 @@
  * Onboarding Flow (§5.3)
  * ──────────────────────
  * 5-screen first-launch experience:
- *   1. Welcome — "Meet Pip." Canela 48px
+ *   1. Welcome — "Meet Jenny." Canela 48px
  *   2. How It Works — 3-panel carousel
- *   3. Notifications — "Can Pip remind you?"
+ *   3. Notifications — "Can Jenny remind you?"
  *   4. Check-In Time — time pill picker
  *   5. Pairing Code — 6-digit entry
  */
-import Pip from '@/components/Pip';
+import Jenny from '@/components/Jenny';
 import { Colors, Fonts, FontSizes, Radii, Shadows, Spacing } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { useSupabase } from '../../hooks/useSupabase';
-import { useSettings } from '../../hooks/useSettings';
 import {
     Dimensions,
     NativeScrollEvent,
@@ -25,22 +23,24 @@ import {
     Text,
     View,
 } from 'react-native';
+import { useSettings } from '../../hooks/useSettings';
+import { useSupabase } from '../../hooks/useSupabase';
 
 const { width } = Dimensions.get('window');
 
 const CAROUSEL_PANELS = [
     {
-        pipMood: 'happy' as const,
+        jennyMood: 'happy' as const,
         title: 'Your doctor creates questions',
-        body: 'A short set of questions designed just for you — based on what matters most for your care.',
+        body: 'A short set of questions designed by your doctor, based on what matters most for your care.',
     },
     {
-        pipMood: 'sleepy' as const,
+        jennyMood: 'sleepy' as const,
         title: 'Check in every night',
-        body: "Every evening, Pip reminds you to check in. It takes under 3 minutes. That's it.",
+        body: "Every evening, Jenny reminds you to check in. It only takes a few minutes.",
     },
     {
-        pipMood: 'curious' as const,
+        jennyMood: 'curious' as const,
         title: 'Your doctor stays in the loop',
         body: 'Your responses help your doctor better support you at your next appointment.',
     },
@@ -56,11 +56,11 @@ function WelcomeScreen({ onNext }: { onNext: () => void }) {
                 <View style={styles.blob2} />
                 <View style={styles.blob3} />
 
-                <Pip size={120} mood="happy" />
-                {/* §5.3: "Meet Pip." in Canela 48px */}
-                <Text style={styles.meetPipTitle}>Meet Pip.</Text>
+                <Jenny size={120} mood="happy" />
+                {/* §5.3: "Meet Jenny." in Canela 48px */}
+                <Text style={styles.meetJennyTitle}>Meet Jenny.</Text>
                 {/* §5.3: "Your nightly check-in buddy." in Lora 18px */}
-                <Text style={styles.meetPipSubtitle}>Your nightly check-in buddy.</Text>
+                <Text style={styles.meetJennySubtitle}>Your nightly check-in buddy.</Text>
             </View>
             <View style={styles.bottomArea}>
                 {/* §5.3: aurora-filled pill button, full-width */}
@@ -102,7 +102,7 @@ function HowItWorksScreen({ onNext, onSkip }: { onNext: () => void; onSkip: () =
             >
                 {CAROUSEL_PANELS.map((panel, i) => (
                     <View key={i} style={[styles.carouselPanel, { width }]}>
-                        <Pip size={80} mood={panel.pipMood} />
+                        <Jenny size={80} mood={panel.jennyMood} />
                         <Text style={styles.panelTitle}>{panel.title}</Text>
                         <Text style={styles.panelBody}>{panel.body}</Text>
                     </View>
@@ -132,8 +132,8 @@ function NotificationScreen({ onNext }: { onNext: () => void }) {
     return (
         <View style={styles.screen}>
             <View style={styles.centeredHero}>
-                <Pip size={90} mood="curious" />
-                <Text style={styles.heroTitle}>Can Pip remind you?</Text>
+                <Jenny size={90} mood="curious" />
+                <Text style={styles.heroTitle}>Can Jenny remind you?</Text>
                 <Text style={styles.heroSubtitle}>
                     We'll send you a gentle nudge at your check-in time. That's all.
                 </Text>
@@ -162,7 +162,7 @@ function CheckInTimeScreen({ onNext }: { onNext: () => void }) {
     return (
         <View style={styles.screen}>
             <View style={styles.centeredHero}>
-                <Pip size={80} mood="sleepy" />
+                <Jenny size={80} mood="sleepy" />
                 <Text style={styles.heroTitle}>When do you want to check in?</Text>
                 <Text style={styles.heroSubtitle}>
                     Most people choose between 8pm and 10pm.
@@ -221,7 +221,7 @@ function PairingCodeScreen({ onComplete, errorMsg }: { onComplete: (code: string
     return (
         <View style={styles.screen}>
             <View style={styles.centeredHero}>
-                <Pip size={80} mood="curious" />
+                <Jenny size={80} mood="curious" />
                 <Text style={styles.heroTitle}>Enter your pairing code.</Text>
                 <Text style={styles.heroSubtitle}>
                     Your doctor's office will give you a 6-digit code.
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
         opacity: 0.06,
         transform: [{ scaleY: 1.4 }],
     },
-    meetPipTitle: {
+    meetJennyTitle: {
         // §5.3: Canela 48px
         fontFamily: Fonts.display,
         fontSize: FontSizes['3xl'], // 48px
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
         lineHeight: FontSizes['3xl'] * 1.1,
         marginTop: Spacing.xl,
     },
-    meetPipSubtitle: {
+    meetJennySubtitle: {
         // §5.3: Lora 18px
         fontFamily: Fonts.body,
         fontSize: 18,

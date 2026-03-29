@@ -1,9 +1,9 @@
 {
   "pages": {
-    "/(main)/patients/[id]/page": [
+    "/(main)/patients/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(main)/patients/[id]/page.js"
+      "static/chunks/app/(main)/patients/page.js"
     ],
     "/(main)/layout": [
       "static/chunks/webpack.js",
@@ -15,16 +15,6 @@
       "static/chunks/main-app.js",
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
-    ],
-    "/(main)/patients/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(main)/patients/page.js"
-    ],
-    "/(main)/dashboard/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(main)/dashboard/page.js"
     ]
   }
 }

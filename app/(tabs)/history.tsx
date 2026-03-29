@@ -1,11 +1,10 @@
 /**
- * History Screen (§5.6)
- * ─────────────────────
- * - Scrollable list of past check-in sessions grouped by week
- * - Each session: date, question count, completion ring
- * - Tap to view read-only detail
+ * History Screen — Apple Widget Style
+ * ────────────────────────────────────
+ * Scrollable list of past check-in sessions grouped by week.
+ * Week groups use Apple Settings-style grouped cards.
  */
-import Pip from '@/components/Pip';
+import Jenny from '@/components/Jenny';
 import { Colors, Fonts, FontSizes, Radii, Shadows, Spacing } from '@/constants/theme';
 import { MOCK_DECK } from '@/data/mockDeck';
 import { StoredCheckIn, useCheckInStorage } from '@/hooks/useStorage';
@@ -39,8 +38,8 @@ function CompletionRing({ answered, total }: { answered: number; total: number }
     const ringColor = percent >= 100 ? Colors.moss : percent >= 50 ? Colors.glacier : Colors.slate;
 
     return (
-        <View style={[ringStyles.container]}>
-            <View style={[ringStyles.track]} />
+        <View style={ringStyles.container}>
+            <View style={ringStyles.track} />
             <View
                 style={[
                     ringStyles.fill,
@@ -99,7 +98,7 @@ function DetailModal({
             <SafeAreaView style={detailStyles.container}>
                 <View style={detailStyles.header}>
                     <Pressable onPress={onClose}>
-                        <Text style={detailStyles.close}>✕ Close</Text>
+                        <Text style={detailStyles.close}>Done</Text>
                     </Pressable>
                     <Text style={detailStyles.date}>{formatDate(checkIn.date)}</Text>
                 </View>
@@ -110,21 +109,23 @@ function DetailModal({
                         {checkIn.questionsAnswered} of {checkIn.questionsTotal} answered
                     </Text>
 
-                    {Object.entries(checkIn.answers).map(([qId, answer]) => {
-                        const question = MOCK_DECK.questions.find((q) => q.id === qId);
-                        const displayAnswer = Array.isArray(answer)
-                            ? answer.join(', ')
-                            : typeof answer === 'boolean'
-                                ? answer ? 'Yes' : 'No'
-                                : String(answer);
+                    <View style={detailStyles.groupedCard}>
+                        {Object.entries(checkIn.answers).map(([qId, answer], idx, arr) => {
+                            const question = MOCK_DECK.questions.find((q) => q.id === qId);
+                            const displayAnswer = Array.isArray(answer)
+                                ? answer.join(', ')
+                                : typeof answer === 'boolean'
+                                    ? answer ? 'Yes' : 'No'
+                                    : String(answer);
 
-                        return (
-                            <View key={qId} style={detailStyles.answerCard}>
-                                <Text style={detailStyles.qText}>{question?.text ?? qId}</Text>
-                                <Text style={detailStyles.aText}>{displayAnswer}</Text>
-                            </View>
-                        );
-                    })}
+                            return (
+                                <View key={qId} style={[detailStyles.answerRow, idx < arr.length - 1 && detailStyles.answerRowBorder]}>
+                                    <Text style={detailStyles.qText}>{question?.text ?? qId}</Text>
+                                    <Text style={detailStyles.aText}>{displayAnswer}</Text>
+                                </View>
+                            );
+                        })}
+                    </View>
                 </ScrollView>
             </SafeAreaView>
         </Modal>
@@ -139,13 +140,11 @@ const detailStyles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: Spacing.lg,
         paddingVertical: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(28, 43, 58, 0.05)',
     },
     close: {
-        fontFamily: Fonts.mono,
-        fontSize: FontSizes.sm,
-        color: Colors.slate,
+        fontFamily: Fonts.bodyBold,
+        fontSize: FontSizes.base,
+        color: Colors.glacier,
     },
     date: {
         fontFamily: Fonts.monoMedium,
@@ -155,21 +154,27 @@ const detailStyles = StyleSheet.create({
     content: { padding: Spacing.lg, gap: Spacing.md },
     title: {
         fontFamily: Fonts.displayBold,
-        fontSize: FontSizes.lg,
+        fontSize: 22,
         color: Colors.ink,
-        marginBottom: Spacing.xs,
+        letterSpacing: -0.3,
     },
     meta: {
         fontFamily: Fonts.mono,
         fontSize: FontSizes.xs,
         color: Colors.slate,
-        marginBottom: Spacing.md,
+        marginBottom: Spacing.sm,
     },
-    answerCard: {
+    groupedCard: {
         backgroundColor: Colors.snow,
-        borderRadius: Radii.lg,
+        borderRadius: Radii.widget,
+        overflow: 'hidden',
+    },
+    answerRow: {
         padding: Spacing.lg,
-        ...Shadows.card,
+    },
+    answerRowBorder: {
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'rgba(0,0,0,0.06)',
     },
     qText: {
         fontFamily: Fonts.body,
@@ -196,14 +201,13 @@ export default function HistoryScreen() {
         <SafeAreaView style={styles.container}>
             <View style={styles.headerArea}>
                 <Text style={styles.title}>History</Text>
-                <Text style={styles.subtitle}>PAST CHECK-INS</Text>
             </View>
 
             {!hasData ? (
                 <View style={styles.emptyArea}>
                     <View style={styles.emptyCard}>
-                        <Pip size={56} mood="curious" />
-                        <Text style={styles.emptyTitle}>Nothing here yet.</Text>
+                        <Jenny size={56} mood="curious" />
+                        <Text style={styles.emptyTitle}>Nothing here yet</Text>
                         <Text style={styles.emptyBody}>
                             Your completed check-ins will appear here, grouped by week.
                         </Text>
@@ -217,24 +221,28 @@ export default function HistoryScreen() {
                     {weeks.map(([weekKey, weekCheckIns]) => (
                         <View key={weekKey} style={styles.weekSection}>
                             <Text style={styles.weekLabel}>{formatWeek(weekKey)}</Text>
-                            {weekCheckIns.map((c) => (
-                                <Pressable
-                                    key={c.id}
-                                    style={({ pressed }) => [
-                                        styles.checkInRow,
-                                        pressed && styles.checkInRowPressed,
-                                    ]}
-                                    onPress={() => setSelectedCheckIn(c)}
-                                >
-                                    <View style={styles.rowLeft}>
-                                        <Text style={styles.rowDate}>{formatDate(c.date)}</Text>
-                                        <Text style={styles.rowMeta}>
-                                            {c.questionsAnswered}/{c.questionsTotal} answered
-                                        </Text>
-                                    </View>
-                                    <CompletionRing answered={c.questionsAnswered} total={c.questionsTotal} />
-                                </Pressable>
-                            ))}
+                            {/* Apple-style grouped card */}
+                            <View style={styles.groupedCard}>
+                                {weekCheckIns.map((c, idx) => (
+                                    <Pressable
+                                        key={c.id}
+                                        style={({ pressed }) => [
+                                            styles.checkInRow,
+                                            idx < weekCheckIns.length - 1 && styles.checkInRowBorder,
+                                            pressed && styles.checkInRowPressed,
+                                        ]}
+                                        onPress={() => setSelectedCheckIn(c)}
+                                    >
+                                        <View style={styles.rowLeft}>
+                                            <Text style={styles.rowDate}>{formatDate(c.date)}</Text>
+                                            <Text style={styles.rowMeta}>
+                                                {c.questionsAnswered}/{c.questionsTotal} answered
+                                            </Text>
+                                        </View>
+                                        <CompletionRing answered={c.questionsAnswered} total={c.questionsTotal} />
+                                    </Pressable>
+                                ))}
+                            </View>
                         </View>
                     ))}
                 </ScrollView>
@@ -261,16 +269,9 @@ const styles = StyleSheet.create({
     },
     title: {
         fontFamily: Fonts.displayBold,
-        fontSize: FontSizes.xl,
+        fontSize: 28,
         color: Colors.ink,
-        lineHeight: FontSizes.xl * 1.1,
-        marginBottom: Spacing.xs,
-    },
-    subtitle: {
-        fontFamily: Fonts.monoMedium,
-        fontSize: FontSizes.xs,
-        color: Colors.slate,
-        letterSpacing: 2,
+        letterSpacing: -0.5,
     },
     // Empty state
     emptyArea: {
@@ -280,11 +281,10 @@ const styles = StyleSheet.create({
     },
     emptyCard: {
         backgroundColor: Colors.snow,
-        borderRadius: Radii.lg,
+        borderRadius: Radii.widget,
         padding: Spacing['2xl'],
         alignItems: 'center',
         gap: Spacing.md,
-        ...Shadows.card,
     },
     emptyTitle: {
         fontFamily: Fonts.bodyBold,
@@ -307,25 +307,32 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.lg,
     },
     weekLabel: {
-        fontFamily: Fonts.monoMedium,
+        fontFamily: Fonts.mono,
         fontSize: FontSizes.xs,
         color: Colors.slate,
-        letterSpacing: 1.5,
+        letterSpacing: 1,
         marginBottom: Spacing.sm,
+        textTransform: 'uppercase',
+        paddingHorizontal: 4,
+    },
+    // Apple-style grouped card
+    groupedCard: {
+        backgroundColor: Colors.snow,
+        borderRadius: Radii.widget,
+        overflow: 'hidden',
     },
     checkInRow: {
-        backgroundColor: Colors.snow,
-        borderRadius: Radii.lg,
         padding: Spacing.lg,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: Spacing.sm,
-        ...Shadows.card,
+    },
+    checkInRowBorder: {
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'rgba(0,0,0,0.08)',
     },
     checkInRowPressed: {
-        opacity: 0.92,
-        transform: [{ scale: 0.985 }],
+        backgroundColor: 'rgba(0,0,0,0.03)',
     },
     rowLeft: {
         flex: 1,

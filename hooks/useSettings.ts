@@ -4,7 +4,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
-const SETTINGS_KEY = '@penguinpals:settings';
+const SETTINGS_KEY = '@jenny:settings';
 
 export interface AppSettings {
     checkInTime: string;        // e.g. "9:00 PM"
@@ -46,5 +46,12 @@ export function useSettings() {
         await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
     }, [settings]);
 
-    return { settings, loading, updateSetting };
+    const reloadSettings = useCallback(async () => {
+        const raw = await AsyncStorage.getItem(SETTINGS_KEY);
+        if (raw) {
+            setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
+        }
+    }, []);
+
+    return { settings, loading, updateSetting, reloadSettings };
 }

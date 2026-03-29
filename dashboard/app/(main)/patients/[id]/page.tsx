@@ -1,11 +1,53 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { Deck, Patient, Question } from '@shared/types';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity, Calendar, Target, CheckCircle2 } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { Activity, Calendar, Target, CheckCircle2, Sparkles, X } from 'lucide-react';
+import { useCallback } from 'react';
+
+// Standalone tooltip component — must be outside PatientDetail for stable React identity
+function ChartTooltipContent({ active, payload, label }: any) {
+  if (!active || !payload || !payload.length) return null;
+  
+  const rawResponses = payload[0]?.payload?.rawResponses;
+  if (!rawResponses) return null;
+
+  const multiselects = rawResponses.filter((r: any) => 
+    r.questions?.type?.startsWith('multi_') || r.questions?.type === 'yes_no'
+  );
+
+  return (
+    <div style={{ backgroundColor: '#fff', padding: 16, borderRadius: 16, boxShadow: '0 8px 32px rgba(28,43,58,0.1)', border: '1px solid rgba(28,43,58,0.05)', minWidth: 220 }}>
+      <p style={{ margin: '0 0 12px 0', color: 'var(--slate)', fontFamily: 'monospace', fontSize: 12 }}>{label}</p>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {payload.map((p: any) => (
+          <div key={p.dataKey} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 'bold', color: p.color }}>
+            <span>{p.name}</span>
+            <span>{p.value}</span>
+          </div>
+        ))}
+      </div>
+      
+      {multiselects.length > 0 && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--ice)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {multiselects.map((ms: any) => {
+            const labelStr = Array.isArray(ms.value) ? ms.value.join(', ') : ms.value.toString();
+            return (
+              <div key={ms.id}>
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--slate)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{ms.questions.text}</p>
+                <p style={{ margin: '2px 0 0 0', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>{labelStr}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PatientDetail({ params }: { params: { id: string } }) {
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -20,6 +62,14 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
   const [isPushing, setIsPushing] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [visibleMetrics, setVisibleMetrics] = useState<Record<string, boolean>>({});
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiDayRange, setAiDayRange] = useState(30);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  const [chartWidth, setChartWidth] = useState(0);
+  const [chartReady, setChartReady] = useState(false);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,6 +77,33 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
+
+  // Callback ref: fires when the chart container div mounts/unmounts
+  const chartRefCallback = useCallback((node: HTMLDivElement | null) => {
+    // Clean up old observer
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect();
+      resizeObserverRef.current = null;
+    }
+    
+    chartContainerRef.current = node;
+    
+    if (node) {
+      const measure = () => {
+        const w = node.getBoundingClientRect().width;
+        if (w > 0) {
+          setChartWidth(w);
+          setChartReady(true);
+        }
+      };
+      // Measure immediately
+      measure();
+      // Also measure on future resizes
+      const ro = new ResizeObserver(measure);
+      ro.observe(node);
+      resizeObserverRef.current = ro;
+    }
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -89,7 +166,22 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
       .select('*, questions(text, type)')
       .eq('patient_id', params.id);
       
-    if (respData) setResponses(respData);
+    if (respData) {
+      // Try to enrich with metric_key (may not exist until migration is run)
+      try {
+        const { data: enriched } = await supabase
+          .from('responses')
+          .select('*, questions(text, type, metric_key)')
+          .eq('patient_id', params.id);
+        if (enriched) {
+          setResponses(enriched);
+        } else {
+          setResponses(respData);
+        }
+      } catch {
+        setResponses(respData);
+      }
+    }
 
     setLoading(false);
   };
@@ -218,49 +310,7 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
     return Object.values(map).sort((a,b) => a.qText.localeCompare(b.qText) || a.option.localeCompare(b.option));
   }, [sessions, responses]);
 
-  // The custom Recharts Tooltip to inject the non-numerical values contextually into hovered coordinates
-  const CustomChartTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const rawResponses = payload[0].payload.rawResponses;
-      
-      // Pluck non-measurable strings
-      const multiselects = rawResponses.filter((r: any) => 
-        r.questions?.type?.startsWith('multi_') || r.questions?.type === 'yes_no'
-      );
-
-      return (
-        <div style={{ backgroundColor: '#fff', padding: 16, borderRadius: 16, boxShadow: '0 8px 32px rgba(28,43,58,0.1)', border: '1px solid rgba(28,43,58,0.05)', minWidth: 220 }}>
-          <p style={{ margin: '0 0 12px 0', color: 'var(--slate)', fontFamily: 'monospace', fontSize: 12 }}>{label}</p>
-          
-          {/* Default Chart Items */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {payload.map((p: any) => (
-              <div key={p.dataKey} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 'bold', color: p.color }}>
-                <span>{p.name}</span>
-                <span>{p.value}</span>
-              </div>
-            ))}
-          </div>
-          
-          {/* Appended Contextual Outcomes */}
-          {multiselects.length > 0 && (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--ice)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {multiselects.map((ms: any) => {
-                const labelStr = Array.isArray(ms.value) ? ms.value.join(', ') : ms.value.toString();
-                return (
-                  <div key={ms.id}>
-                    <p style={{ margin: 0, fontSize: 11, color: 'var(--slate)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{ms.questions.text}</p>
-                    <p style={{ margin: '2px 0 0 0', fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>{labelStr}</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
+  // CustomChartTooltip moved to top-level ChartTooltipContent for stable identity
 
   const COLORS = ['#6B8F71', '#9AC4A8', '#AED9E0', '#B8E1D9', '#0d9488', '#3b82f6', '#f43f5e', '#8b5cf6', '#f59e0b'];
 
@@ -324,6 +374,108 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
     // The mobile app polls every 10s, so changes are automatically pulled.
     // This UX explicitly confirms that the system is live.
     setTimeout(() => setIsPushing(false), 2000);
+  };
+
+  // ── AI Analysis: n8n Webhook ──
+  const runAiAnalysis = async () => {
+    if (!patient) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiInsight(null);
+
+    try {
+      // 1. Filter responses to the selected day range
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - aiDayRange);
+      const cutoffISO = cutoff.toISOString();
+
+      const rangedResponses = responses.filter(
+        (r: any) => r.answered_at && r.answered_at >= cutoffISO
+      );
+
+      if (rangedResponses.length === 0) {
+        setAiError('No responses found for the selected date range.');
+        setAiLoading(false);
+        return;
+      }
+
+      // 2. Sort chronologically and group by question text
+      const sorted = [...rangedResponses].sort(
+        (a: any, b: any) => new Date(a.answered_at).getTime() - new Date(b.answered_at).getTime()
+      );
+
+      // Group: { questionText -> { values: any[], dates: string[] } }
+      const grouped: Record<string, { values: any[]; dates: string[] }> = {};
+
+      sorted.forEach((r: any) => {
+        const qText = r.questions?.text;
+        if (!qText) return;
+
+        // Get raw answer value (don't encode — the n8n pipeline handles encoding)
+        let answer = r.value;
+        if (answer === undefined || answer === null || answer === '') return;
+
+        // For yes_no, send as string "yes"/"no" for n8n boolean encoding
+        if (r.questions.type === 'yes_no') {
+          answer = (answer === true || answer === 'true') ? 'yes' : 'no';
+        }
+
+        if (!grouped[qText]) {
+          grouped[qText] = { values: [], dates: [] };
+        }
+
+        grouped[qText].values.push(answer);
+        // Format date as YYYY-MM-DD
+        const dateStr = new Date(r.answered_at).toISOString().split('T')[0];
+        grouped[qText].dates.push(dateStr);
+      });
+
+      if (Object.keys(grouped).length === 0) {
+        setAiError('No valid responses with question text found for the selected range.');
+        setAiLoading(false);
+        return;
+      }
+
+      // 3. Build the responses array — n8n QUESTION_REGISTRY format
+      const webhookResponses = Object.entries(grouped).map(([questionText, data]) => ({
+        question_text: questionText,
+        answer: data.values[data.values.length - 1], // most recent answer
+        history: data.values,
+        dates: data.dates,
+      }));
+
+      // 4. Build webhook payload
+      const payload = {
+        patient_id: patient.id,
+        responses: webhookResponses,
+      };
+
+      console.log('🧠 [AI] Sending to n8n:', JSON.stringify(payload, null, 2));
+
+      // 5. POST to n8n webhook
+      const res = await fetch('https://tarunm78.app.n8n.cloud/webhook-test/patient-health-monitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(`Webhook returned ${res.status}: ${errBody || res.statusText}`);
+      }
+
+      const data = await res.json();
+      console.log('🧠 [AI] Response:', data);
+
+      // 6. Extract the generated summary
+      const blurb = data.output || data.text || data.message || data.result || data.summary || JSON.stringify(data);
+      setAiInsight(blurb);
+    } catch (e: any) {
+      console.error('🧠 [AI] Error:', e);
+      setAiError(e.message || 'Failed to reach the AI analysis service.');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   if (loading) return <div className="dashboard-page"><div className="loading">Loading patient data...</div></div>;
@@ -418,9 +570,9 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
               </div>
 
               {mounted && chartData.length > 0 ? (
-                <div style={{ width: '100%', height: 360 }}>
-                  <ResponsiveContainer>
-                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <div ref={chartRefCallback} style={{ width: '100%', height: 360 }}>
+                  {chartReady && chartWidth > 0 ? (
+                    <AreaChart width={chartWidth} height={360} data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         {quantifiableQuestions.map((q, i) => (
                           <linearGradient key={`grad-${q.id}`} id={`color-${q.id}`} x1="0" y1="0" x2="0" y2="1">
@@ -433,9 +585,17 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
                       <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--slate)', fontSize: 13, fontFamily: 'monospace' }} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--slate)', fontSize: 13, fontFamily: 'monospace' }} domain={[0, 'auto']} />
                       <Tooltip 
-                        contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 8px 32px rgba(28,43,58,0.1)', fontWeight: 500 }}
-                        itemStyle={{ fontWeight: 'bold' }}
-                        content={<CustomChartTooltip />}
+                        isAnimationActive={false}
+                        contentStyle={{ 
+                          borderRadius: 16, 
+                          border: '1px solid rgba(28,43,58,0.05)', 
+                          boxShadow: '0 8px 32px rgba(28,43,58,0.1)', 
+                          padding: 16,
+                          minWidth: 200,
+                          backgroundColor: '#fff',
+                        }}
+                        labelStyle={{ color: 'var(--slate)', fontFamily: 'monospace', fontSize: 12, marginBottom: 8 }}
+                        itemStyle={{ fontWeight: 'bold', fontSize: 14, padding: '2px 0' }}
                       />
                       {quantifiableQuestions.map((q, i) => {
                         if (visibleMetrics[q.id] === false) return null;
@@ -456,7 +616,9 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
                         );
                       })}
                     </AreaChart>
-                  </ResponsiveContainer>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--slate)' }}>Loading chart...</div>
+                  )}
                 </div>
               ) : (
                 <div className="empty-state" style={{ padding: '40px' }}>
@@ -589,6 +751,80 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
               </div>
             )}
 
+            {/* ── AI Analysis Panel ── */}
+            <div className="patient-card" style={{ padding: '32px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 20, background: 'linear-gradient(135deg, #FF6B8A, #E8568A)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Sparkles size={20} color="white" />
+                  </div>
+                  <h2 style={{ margin: 0, fontSize: 20, fontFamily: 'Playfair Display, serif' }}>AI Analysis</h2>
+                </div>
+              </div>
+
+              {/* Day Range Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+                <span style={{ fontSize: 13, color: 'var(--slate)', fontFamily: 'var(--font-mono)' }}>Analyze last:</span>
+                {[7, 14, 30, 90].map(days => (
+                  <button
+                    key={days}
+                    onClick={() => setAiDayRange(days)}
+                    style={{
+                      padding: '6px 14px', borderRadius: 20, border: 'none',
+                      background: aiDayRange === days ? 'var(--glacier)' : 'var(--fog)',
+                      color: aiDayRange === days ? 'white' : 'var(--slate)',
+                      fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                  >
+                    {days}d
+                  </button>
+                ))}
+              </div>
+
+              {/* Generate Button */}
+              <button
+                onClick={runAiAnalysis}
+                disabled={aiLoading || responses.length === 0}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  width: '100%', padding: '14px 24px', borderRadius: 16, border: 'none',
+                  background: aiLoading ? 'var(--slate)' : 'linear-gradient(135deg, #FF6B8A, #E8568A)',
+                  color: 'white', fontWeight: 700, fontSize: 15, cursor: aiLoading ? 'wait' : 'pointer',
+                  transition: 'all 0.3s', opacity: responses.length === 0 ? 0.4 : 1,
+                  boxShadow: aiLoading ? 'none' : '0 4px 16px rgba(212, 120, 138, 0.25)'
+                }}
+              >
+                <Sparkles size={18} />
+                {aiLoading ? 'Analyzing with Gemini...' : 'Generate Insight'}
+              </button>
+
+              {/* Error State */}
+              {aiError && (
+                <div style={{
+                  marginTop: 16, padding: '14px 18px', borderRadius: 12,
+                  backgroundColor: 'rgba(212, 120, 138, 0.08)', border: '1px solid rgba(212, 120, 138, 0.2)',
+                  color: 'var(--blush)', fontSize: 14
+                }}>
+                  {aiError}
+                </div>
+              )}
+
+              {/* AI Insight Blurb */}
+              {aiInsight && (
+                <div style={{
+                  marginTop: 20, padding: '20px 24px', borderRadius: 16,
+                  backgroundColor: 'var(--fog)', border: '1px solid rgba(91, 163, 191, 0.15)',
+                  lineHeight: 1.7, fontSize: 15, color: 'var(--ink)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--slate)', fontFamily: 'var(--font-mono)' }}>
+                    <Sparkles size={14} />
+                    Gemini Analysis · Last {aiDayRange} days
+                  </div>
+                  {aiInsight}
+                </div>
+              )}
+            </div>
+
           </div>
         ) : (
           /* DECK EDITOR VIEW */
@@ -629,7 +865,7 @@ export default function PatientDetail({ params }: { params: { id: string } }) {
                         <div className="q-text">{q.text}</div>
                         <div className="q-type">{q.type.replace('_', ' ')}</div>
                       </div>
-                      <button className="del-btn" onClick={() => removeQuestion(q.id)}>✕</button>
+                      <button className="del-btn" onClick={() => removeQuestion(q.id)}><X size={16} /></button>
                     </div>
                   ))}
                 </div>
